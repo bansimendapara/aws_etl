@@ -1,63 +1,81 @@
-AWSTemplateFormatVersion: "2010-09-09"
-Transform: AWS::Serverless-2016-10-31
-Description: AWS ETL
-
 Resources:
-  VisitorsCounterTable:
-    Type: AWS::Serverless::SimpleTable
-    Properties:
-      PrimaryKey:
-        Name: id
-        Type: String
-      ProvisionedThroughput:
-        ReadCapacityUnits: 15
-        WriteCapacityUnits: 15
 
-  VisitorsCounterFunction:
-    Type: AWS::Serverless::Function
+  ScheduledRule:
+    Type: AWS::Events::Rule
     Properties:
-      CodeUri: visitors_counter/
-      Handler: app.lambda_handler
-      Runtime: python3.8
-      Role: !GetAtt LambdaFunctionRole.Arn
+      ScheduleExpression: "rate(15 minutes)"
+      State: "ENABLED"
+      Targets: 
+        - 
+          Arn: !GetAtt ETL.Arn
+          Id: AWSETL
+  
+  PermissionForEventsToInvokeLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt ETL.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ScheduledRule.Arn
+
+  ETL:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.7
+      Role: !GetAtt ETLRole.Arn
+      Handler: lambda_function.lambda_handler
+      MemorySize: 512
       Environment:
-        Variables:
-          databaseName: !Ref VisitorsCounterTable
-      Events:
-        RandoEventName:
-          Type: Api
-          Properties:
-            Path: /visitor-count
-            Method: get
+        Variables: 
+          database: postgres
+          endpoint: aws-etl.c5gagw00ew7h.us-east-1.rds.amazonaws.com
+          jh: https://raw.githubusercontent.com/datasets/covid-19/master/data/time-series-19-covid-combined.csv
+          nyt: https://raw.githubusercontent.com/nytimes/covid-19-data/master/us.csv
+          password: bansi123
+          port: 5432
+          region: us-east-1
+          sns: !Ref ETLSNS
+          user: bansi
+      Code: 
+        S3Bucket: aws-etl-lambda-code
+        S3Key: lambda.zip
+      Layers:
+        - arn:aws:lambda:us-east-1:251566558623:layer:python37-layer-pandas-gbq:1
+        - arn:aws:lambda:us-east-1:898466741470:layer:psycopg2-py37:3
 
-  LambdaFunctionRole:
+  ETLRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: "2012-10-17"
+        Version: 2012-10-17
         Statement:
           - Effect: Allow
-            Principal:
+            Principal: 
               Service:
                 - lambda.amazonaws.com
             Action:
               - sts:AssumeRole
-      Path: "/"
+      Path: /
       Policies:
-        - PolicyName: dynamodbAccessRole
+        - PolicyName: SNS-Log
           PolicyDocument:
-            Version: "2012-10-17"
+            Version: 2012-10-17
             Statement:
-              - Effect: Allow
-                Action:
-                  - dynamodb:UpdateItem
-                Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${VisitorsCounterTable}"
               - Effect: Allow
                 Action:
                   - logs:*
                 Resource: "*"
+              - Effect: Allow
+                Action: 
+                  - sns:*
+                Resource: "*"
 
-Outputs:
-  VisitorsCounterApi:
-    Description: "API Gateway endpoint URL for Prod stage for Hello World function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/visitor-count/"
+  ETLSNS:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Endpoint: "bansiawspro@gmail.com"
+          Protocol: email
+
+
+          
