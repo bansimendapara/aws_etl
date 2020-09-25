@@ -57,15 +57,15 @@ def lambda_handler(event, context):
     
     conn = database_connection()
     cur = conn.cursor()
-    cur.execute("""SELECT count(reportdate) from etl""")
-    query_results = cur.fetchall()
-    
     data = []
-    
-    if query_results[0][0]==0:
+    cur.execute("""SELECT to_regclass('etl')""")
+    query_results = cur.fetchall()
+    if query_results[0][0]==None:
+        query = """CREATE TABLE etl (reportdate date PRIMARY KEY, cases integer, deaths integer, recovered integer)"""
+        cur.execute(query)
         query,data = first_insert(dfFinal,data)
         cur.execute(query,data)
-        notify("First time covid data inserted")
+        notify("Table is created and First time covid data inserted")
     else:
         cur.execute("""SELECT max(reportdate) from etl""")
         query_results = cur.fetchall()
