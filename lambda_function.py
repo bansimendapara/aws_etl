@@ -15,7 +15,16 @@ rdsDatabaseName = os.environ['database']
 rdsPassword = os.environ['password']
 johnHopkinsURL = os.environ['jh']
 nytURL = os.environ['nyt']
-    
+snsARN = os.environ['sns']
+
+def notify(text):
+    try:
+        sns = boto3.client('sns')
+        sns.publish(TopicArn = snsARN, Message = text)
+    except Exception as e:
+        print("Not able to send SMS due to {}".format(e))
+        exit(1)
+
 def database_connection():
     try:
         conn = psycopg2.connect(host=rdsEndpoint, port=rdsPort, database=rdsDatabaseName, user=rdsUser, password=rdsPassword)
@@ -40,7 +49,6 @@ def everyday_insert(dfFinal,data,days):
     query = "insert into etl (reportdate,cases,deaths,recovered) values{}".format(records)
     return query,data
     
-    
 def lambda_handler(event, context):
     
     dfNYT = pd.read_csv(nytURL)
@@ -57,11 +65,15 @@ def lambda_handler(event, context):
     if query_results[0][0]==0:
         query,data = first_insert(dfFinal,data)
         cur.execute(query,data)
+        notify("First time covid data inserted")
     else:
         cur.execute("""SELECT max(reportdate) from etl""")
         query_results = cur.fetchall()
         diff = max(dfFinal['date']).date()-query_results[0][0]
-        if diff>0:
+        if diff.days>0:
             query,data = everyday_insert(dfFinal,data,diff.days)
             cur.execute(query,data)
+            notify("Today "+str(diff.days)+" rows updated")
+        else:
+            notify("Today nothing new in covid data")
     conn.commit()
