@@ -19,6 +19,7 @@ nytURL = os.environ['nyt']
 def database_connection():
     try:
         conn = psycopg2.connect(host=rdsEndpoint, port=rdsPort, database=rdsDatabaseName, user=rdsUser, password=rdsPassword)
+        return conn
     except Exception as e:
         print("Database connection failed due to {}".format(e))
         exit(1)
@@ -33,7 +34,7 @@ def first_insert(dfFinal,data):
 
 def everyday_insert(dfFinal,data,days):
     for i in range(days):
-        row = (dfFinal.loc[dfFinal.shape[0]-diff.days+i,'date'], int(dfFinal.loc[dfFinal.shape[0]-diff.days+i,'cases']),int(dfFinal.loc[dfFinal.shape[0]-diff.days+i,'deaths']),int(dfFinal.loc[dfFinal.shape[0]-diff.days+i,'recovered']))
+        row = (dfFinal.loc[dfFinal.shape[0]-days+i,'date'], int(dfFinal.loc[dfFinal.shape[0]-days+i,'cases']), int(dfFinal.loc[dfFinal.shape[0]-days+i,'deaths']),int(dfFinal.loc[dfFinal.shape[0]-days+i,'recovered']))
         data.append(row)
     records = ','.join(['%s'] * len(data))
     query = "insert into etl (reportdate,cases,deaths,recovered) values{}".format(records)
@@ -60,5 +61,7 @@ def lambda_handler(event, context):
         cur.execute("""SELECT max(reportdate) from etl""")
         query_results = cur.fetchall()
         diff = max(dfFinal['date']).date()-query_results[0][0]
-        query,data = everyday_insert(dfFinal,data,diff.days)
-        cur.execute(query,data)
+        if diff>0:
+            query,data = everyday_insert(dfFinal,data,diff.days)
+            cur.execute(query,data)
+    conn.commit()
