@@ -32,7 +32,7 @@ Resources:
   ScheduledRule:
     Type: AWS::Events::Rule
     Properties:
-      ScheduleExpression: "rate(15 minutes)"
+      ScheduleExpression: "rate(1 hour)"
       State: "ENABLED"
       Targets: 
         - 
@@ -87,7 +87,7 @@ Resources:
               - sts:AssumeRole
       Path: /
       Policies:
-        - PolicyName: SNS-Log
+        - PolicyName: SNS-Log-VPC
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -114,15 +114,13 @@ Resources:
       BackupRetentionPeriod: 0
       DBName: !Ref DBName
       DBInstanceClass: db.t2.micro
-      #DBInstanceIdentifier: !Ref DBInstanceID
       DBSecurityGroups: 
         - !Ref DBSecurityGroup
       Engine: postgres
       MasterUsername: !Ref DBUsername
       MasterUserPassword: !Ref DBPassword
       MaxAllocatedStorage: 20
-      MultiAZ: false
-      PubliclyAccessible: true    
+      MultiAZ: false  
 
   DBSecurityGroup:
     Type: AWS::RDS::DBSecurityGroup

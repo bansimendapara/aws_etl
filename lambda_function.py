@@ -1,10 +1,7 @@
-import json
 import boto3
 import pandas as pd
 import transformation
 import psycopg2
-import sys
-import time
 import os
 
 rdsEndpoint = os.environ['endpoint']
@@ -30,7 +27,7 @@ def database_connection():
         conn = psycopg2.connect(host=rdsEndpoint, port=rdsPort, database=rdsDatabaseName, user=rdsUser, password=rdsPassword)
         return conn
     except Exception as e:
-        print("Database connection failed due to {}".format(e))
+        notify("Database connection failed due to {}".format(e))
         exit(1)
 
 def first_insert(dfFinal,data):
@@ -53,27 +50,42 @@ def lambda_handler(event, context):
     
     dfNYT = pd.read_csv(nytURL)
     dfJH = pd.read_csv(johnHopkinsURL,usecols=['Date','Country/Region','Recovered'])
-    dfFinal = transformation.transform(dfNYT,dfJH)
-    
+    try:
+        dfFinal = transformation.transform(dfNYT,dfJH)
+    except Exception as e:
+        notify("Transform function raised exception because {}",format(e))
+        exit(1)
     conn = database_connection()
     cur = conn.cursor()
     data = []
     cur.execute("""SELECT to_regclass('etl')""")
     query_results = cur.fetchall()
     if query_results[0][0]==None:
-        query = """CREATE TABLE etl (reportdate date PRIMARY KEY, cases integer, deaths integer, recovered integer)"""
-        cur.execute(query)
-        query,data = first_insert(dfFinal,data)
-        cur.execute(query,data)
-        notify("Table is created and First time covid data inserted")
+        try:
+            query = """CREATE TABLE etl (reportdate date PRIMARY KEY, cases integer, deaths integer, recovered integer)"""
+            cur.execute(query)
+        except Exception as e:
+            notify("Exception raised while creation of table because {}".format(e))
+            exit(1)
+        try:
+            query,data = first_insert(dfFinal,data)
+            cur.execute(query,data)
+        except Exception as e:
+            notify("Couldn't complete first time data insertion in the table because {}".format(e))
+            exit(1)
+        notify("Table creation and first time data insertion done successfully")
     else:
         cur.execute("""SELECT max(reportdate) from etl""")
         query_results = cur.fetchall()
         diff = max(dfFinal['date']).date()-query_results[0][0]
         if diff.days>0:
-            query,data = everyday_insert(dfFinal,data,diff.days)
-            cur.execute(query,data)
+            try:
+                query,data = everyday_insert(dfFinal,data,diff.days)
+                cur.execute(query,data)
+            except Exception as e:
+                notify("Daily insertion of data is unsuccessful because {}".format(e))
+                exit(1)
             notify("Today "+str(diff.days)+" rows updated")
         else:
-            notify("Today nothing new in covid data")
+            notify("Nothing new in covid data")
     conn.commit()
