@@ -87,5 +87,5 @@ def lambda_handler(event, context):
                 exit(1)
             notify("Today "+str(diff.days)+" rows updated")
         else:
-            notify("Nothing new in covid data")
+            notify("Nothing to update today")
     conn.commit()
