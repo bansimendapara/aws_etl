@@ -32,7 +32,7 @@ Resources:
   ScheduledRule:
     Type: AWS::Events::Rule
     Properties:
-      ScheduleExpression: "rate(1 hour)"
+      ScheduleExpression: "cron(0 14 * * ? *)"
       State: "ENABLED"
       Targets: 
         - 
