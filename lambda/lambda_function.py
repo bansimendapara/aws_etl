@@ -73,7 +73,7 @@ def lambda_handler(event, context):
         except Exception as e:
             notify("Couldn't complete first time data insertion in the table because {}".format(e))
             exit(1)
-        notify("Table creation and first time data insertion done successfully")
+        notify("Table is created and data insertion is done")
     else:
         cur.execute("""SELECT max(reportdate) from etl""")
         query_results = cur.fetchall()
@@ -87,5 +87,5 @@ def lambda_handler(event, context):
                 exit(1)
             notify("Today "+str(diff.days)+" rows updated")
         else:
-            notify("Nothing to update today, juthho ekdum")
+            notify("Data is not updated yet")
     conn.commit()
