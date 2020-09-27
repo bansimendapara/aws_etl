@@ -23,4 +23,4 @@ jobs:
       - name: Package CloudFormation Stack
         run: aws cloudformation package --template-file template.yaml --s3-bucket aws-etl-lambda-code --output-template-file template.packaged.yaml
       - name: Deploy CloudFormation Stack
-        run: aws cloudformation deploy --template-file template.packaged.yaml --stack-name ETL --capabilities CAPABILITY_IAM
+        run: aws cloudformation deploy --template-file template.packaged.yaml --stack-name ETL --capabilities CAPABILITY_IAM --parameter-overrides DBUsername=${{ secrets.DBUsername }} DBPassword=${{ secrets.DBPassword }}
