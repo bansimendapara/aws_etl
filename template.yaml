@@ -123,7 +123,6 @@ Resources:
       DBInstanceClass: db.t2.micro
       DBSecurityGroups: 
         - !Ref DBSecurityGroup
-      DeletionPolicy: Delete
       Engine: postgres
       MasterUsername: !Ref DBUsername
       MasterUserPassword: !Ref DBPassword
