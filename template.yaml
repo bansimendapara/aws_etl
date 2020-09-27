@@ -99,6 +99,13 @@ Resources:
                 Action: 
                   - sns:*
                 Resource: "*"
+       
+  LambdaFunctionLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    DependsOn: "ETL"
+    Properties: 
+      RetentionInDays: 7
+      LogGroupName: !Join ["", ["/aws/lambda/", !Ref ETL]]
 
   ETLSNS:
     Type: AWS::SNS::Topic
@@ -116,6 +123,7 @@ Resources:
       DBInstanceClass: db.t2.micro
       DBSecurityGroups: 
         - !Ref DBSecurityGroup
+      DeletionPolicy: Delete
       Engine: postgres
       MasterUsername: !Ref DBUsername
       MasterUserPassword: !Ref DBPassword
